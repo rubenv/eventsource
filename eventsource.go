@@ -13,7 +13,8 @@ type Source struct {
 	subscribers map[chan []byte]bool
 }
 
-func NewSource() *Source {
+// New creates a new source which can be used to publish events
+func New() *Source {
 	return &Source{
 		subscribers: make(map[chan []byte]bool),
 	}
