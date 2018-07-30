@@ -20,7 +20,7 @@ func New() *Source {
 	}
 }
 
-func (s *Source) Subscribe() chan []byte {
+func (s *Source) subscribe() chan []byte {
 	ch := make(chan []byte, 100)
 	s.lock.Lock()
 	s.subscribers[ch] = true
@@ -28,12 +28,13 @@ func (s *Source) Subscribe() chan []byte {
 	return ch
 }
 
-func (s *Source) Unsubscribe(ch chan []byte) {
+func (s *Source) unsubscribe(ch chan []byte) {
 	s.lock.Lock()
 	delete(s.subscribers, ch)
 	s.lock.Unlock()
 }
 
+// Send a message to all connected clients
 func (s *Source) Publish(msg []byte) {
 	msg = bytes.TrimSpace(msg)
 	msg = bytes.Replace(msg, []byte("\n"), []byte("\ndata: "), -1)
@@ -47,6 +48,8 @@ func (s *Source) Publish(msg []byte) {
 	s.lock.Unlock()
 }
 
+// Source implements http.Handler. All connected clients will receive the
+// published messages.
 func (s *Source) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	f, ok := w.(http.Flusher)
 	if !ok {
@@ -58,8 +61,8 @@ func (s *Source) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	ch := s.Subscribe()
-	defer s.Unsubscribe(ch)
+	ch := s.subscribe()
+	defer s.unsubscribe(ch)
 
 	for {
 		msg, ok := <-ch
